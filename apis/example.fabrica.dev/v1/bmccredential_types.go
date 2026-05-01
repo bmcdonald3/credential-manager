@@ -13,9 +13,9 @@ import (
 
 // BmcCredential represents a bmccredential resource
 type BmcCredential struct {
-	APIVersion string           `json:"apiVersion"`
-	Kind       string           `json:"kind"`
-	Metadata   fabrica.Metadata `json:"metadata"`
+	APIVersion string              `json:"apiVersion"`
+	Kind       string              `json:"kind"`
+	Metadata   fabrica.Metadata    `json:"metadata"`
 	Spec       BmcCredentialSpec   `json:"spec" validate:"required"`
 	Status     BmcCredentialStatus `json:"status,omitempty"`
 }
@@ -31,9 +31,9 @@ type BmcCredentialSpec struct {
 
 // BmcCredentialStatus defines the observed state of BmcCredential
 type BmcCredentialStatus struct {
-	RotationSucceeded  bool       `json:"rotationSucceeded"`
+	RotationSucceeded   bool       `json:"rotationSucceeded"`
 	LastRotationAttempt *time.Time `json:"lastRotationAttempt,omitempty"`
-	FailureReason      string     `json:"failureReason,omitempty"`
+	FailureReason       string     `json:"failureReason,omitempty"`
 }
 
 // Validate implements custom validation logic for BmcCredential
@@ -46,6 +46,7 @@ func (r *BmcCredential) Validate(ctx context.Context) error {
 
 	return nil
 }
+
 // GetKind returns the kind of the resource
 func (r *BmcCredential) GetKind() string {
 	return "BmcCredential"
