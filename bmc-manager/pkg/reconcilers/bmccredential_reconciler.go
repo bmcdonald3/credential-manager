@@ -8,9 +8,26 @@ package reconcilers
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
 	"github.com/user/bmc-manager/apis/example.fabrica.dev/v1"
 )
+
+const redfishPath = "/redfish/v1/"
+
+var newHTTPClient = func() *http.Client {
+	return &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+		},
+	}
+}
 
 // reconcileBmcCredential contains custom reconciliation logic.
 //
@@ -45,35 +62,41 @@ import (
 // Returns:
 //   - error: If reconciliation failed (will trigger retry with backoff)
 func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, res *v1.BmcCredential) error {
-	// TODO: Implement BmcCredential-specific reconciliation logic
-	//
-	// Example:
-	//
-	//   // 1. Read desired state from Spec
-	//   desiredAddress := res.Spec.Address
-	//
-	//   // 2. Observe actual state (e.g., connect to hardware)
-	//   actualState, err := r.observeActualState(ctx, res)
-	//   if err != nil {
-	//       return fmt.Errorf("failed to observe state: %w", err)
-	//   }
-	//
-	//   // 3. Update Status with observed state
-	//   res.Status.Connected = actualState.Connected
-	//   res.Status.Version = actualState.Version
-	//   res.Status.LastSeen = time.Now().Format(time.RFC3339)
-	//
-	//   // 4. Emit events for significant changes
-	//   if !wasConnected && res.Status.Connected {
-	//       eventType := "io.openchami.inventory.bmccredentials.connected"
-	//       if err := r.EmitEvent(ctx, eventType, res); err != nil {
-	//           r.Logger.Warnf("Failed to emit event: %v", err)
-	//       }
-	//   }
-	//
-	//   return nil
+	res.Status.LastCheckedAt = time.Now().UTC()
+	res.Status.Verified = false
+	res.Status.FailureReason = ""
 
-	r.Logger.Infof("BmcCredential reconciliation not yet implemented for %s", res.GetUID())
+	address := strings.TrimSpace(res.Spec.Address)
+	requestURL := fmt.Sprintf("https://%s%s", address, redfishPath)
+
+	parsed, err := url.Parse(requestURL)
+	if err != nil {
+		res.Status.FailureReason = fmt.Sprintf("invalid verification URL: %v", err)
+		return nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		res.Status.FailureReason = fmt.Sprintf("failed to build verification request: %v", err)
+		return nil
+	}
+
+	req.SetBasicAuth(res.Spec.Username, res.Spec.Password)
+
+	resp, err := newHTTPClient().Do(req)
+	if err != nil {
+		res.Status.FailureReason = err.Error()
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		res.Status.Verified = true
+		res.Status.FailureReason = ""
+		return nil
+	}
+
+	res.Status.FailureReason = fmt.Sprintf("verification failed: received HTTP %d", resp.StatusCode)
 
 	return nil
 }
