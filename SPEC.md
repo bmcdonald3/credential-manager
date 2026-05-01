@@ -38,3 +38,7 @@ You are an autonomous software engineering agent. You must achieve the target st
 5. **Implement:** Write the custom logic defined in Section 4 in the appropriate Fabrica reconciler stubs.
 6. **Verify (CRITICAL):** You must run `go mod tidy` and `go build ./...` after modifying any Go files. If the compiler outputs errors, you must read the error, modify the code, and re-compile autonomously.
 7. **Test:** Write table-driven tests for the custom reconciliation logic. Run `go test ./...`. Ensure tests pass before declaring the task complete.
+8. **Handoff (CRITICAL):** Create a `HANDOFF.md` file in the root directory. This file must contain:
+    * A brief summary of the business logic implemented.
+    * The exact schema fields decided upon for the Spec and Status.
+    * The specific `curl` commands or Go test commands a human reviewer must run to prove the logic works.
