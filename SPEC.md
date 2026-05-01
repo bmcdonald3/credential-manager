@@ -1,9 +1,9 @@
 # Service Specification: BMC Manager
 
 ## 1. System Overview
-**Objective:** Manage Baseboard Management Controller (BMC) credentials securely and verify connectivity.
+**Objective:** Manage and rotate Baseboard Management Controller (BMC) credentials securely over the network.
 **Primary Domain:** Hardware Management / Out-of-band management.
-**Boundaries:** This service stores credentials and verifies they work. It does not perform power actions or firmware updates.
+**Boundaries:** This service updates credentials on the target device. It does not perform power actions or firmware updates.
 
 ## 2. Infrastructure & Scaffold Configuration
 This service relies on the Fabrica framework.
@@ -16,16 +16,23 @@ This service relies on the Fabrica framework.
 ## 3. Resource Requirements (Agent-Designed Schema)
 
 ### Resource: BmcCredential
-* **Description:** Represents a set of credentials used to access a specific BMC.
-* **Data to Capture (Spec):** The required information to target a specific machine over the network and authenticate using a standard username and password. Ensure the address field requires a valid hostname or IP.
-* **State to Track (Status):** A boolean indicating if verification succeeded, a timestamp of the last check, and a string to hold any failure reasons.
+* **Description:** Represents a request to rotate credentials on a specific BMC.
+* **Data to Capture (Spec):** * Target Address (hostname or IP).
+  * Current Username and Current Password (required for initial authentication).
+  * Target Account ID or Username to update.
+  * New Password to apply.
+* **State to Track (Status):** A boolean indicating if the rotation succeeded, a timestamp of the last rotation attempt, and a string to hold any failure reasons.
 
 ## 4. Custom Business Logic & Reconciliation
 * **Trigger:** Creation or Update of a `BmcCredential` resource.
-* **Action:** The reconciler (`bmccredential_reconciler.go`) must intercept the creation/update. It must extract the target address and authentication details from the Spec. It should execute a simulated HTTP GET request to `https://[Address]/redfish/v1/` using basic authentication to verify the credentials.
-* **State Update:** * If the HTTP request returns 200 OK, update the Status to reflect a verified state with no errors.
-  * If the HTTP request fails or times out, update the Status to reflect an unverified state and record the error message.
-  * Always update the last checked timestamp to the current UTC time.
+* **Action:** The reconciler (`bmccredential_reconciler.go`) must intercept the creation/update. 
+  1. Extract the target address, current credentials, and the new password from the Spec.
+  2. Execute an HTTP PATCH request to `https://[Address]/redfish/v1/AccountService/Accounts/[TargetAccount]` using basic authentication with the *current* credentials.
+  3. The JSON payload for the PATCH request must set the `Password` field to the *new* password.
+  4. Ensure the HTTP client disables TLS certificate verification (`InsecureSkipVerify: true`) as BMCs typically use self-signed certificates.
+* **State Update:** * If the HTTP PATCH returns 200 OK or 204 No Content, update the Status to reflect a successful rotation with no errors.
+  * If the HTTP request fails, returns 401 Unauthorized, or times out, update the Status to reflect a failed rotation and record the exact error message.
+  * Always update the last rotation timestamp to the current UTC time.
 
 ## 5. Agent Operational Directives (Strict Rules of Engagement)
 You are an autonomous software engineering agent. You must achieve the target state defined in Sections 1-4 by executing terminal commands, writing code, and resolving your own errors.
