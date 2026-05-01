@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/user/test/apis/example.fabrica.dev/v1"
+	v1 "github.com/user/test/apis/example.fabrica.dev/v1"
 )
 
 const bmcRequestTimeout = 10 * time.Second
