@@ -17,9 +17,9 @@ import (
 
 // BmcCredential represents a bmccredential resource
 type BmcCredential struct {
-	APIVersion string           `json:"apiVersion"`
-	Kind       string           `json:"kind"`
-	Metadata   fabrica.Metadata `json:"metadata"`
+	APIVersion string              `json:"apiVersion"`
+	Kind       string              `json:"kind"`
+	Metadata   fabrica.Metadata    `json:"metadata"`
 	Spec       BmcCredentialSpec   `json:"spec" validate:"required"`
 	Status     BmcCredentialStatus `json:"status,omitempty"`
 }
@@ -84,6 +84,7 @@ func isValidHostnameOrIP(address string) bool {
 
 	return true
 }
+
 // GetKind returns the kind of the resource
 func (r *BmcCredential) GetKind() string {
 	return "BmcCredential"

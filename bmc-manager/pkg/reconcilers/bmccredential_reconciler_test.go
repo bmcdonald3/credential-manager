@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/user/bmc-manager/apis/example.fabrica.dev/v1"
+	v1 "github.com/user/bmc-manager/apis/example.fabrica.dev/v1"
 )
 
 type roundTripFunc func(req *http.Request) (*http.Response, error)
@@ -25,27 +25,27 @@ func TestReconcileBmcCredential_Verification(t *testing.T) {
 	})
 
 	tests := []struct {
-		name                 string
-		statusCode           int
-		roundTripErr         error
-		expectVerified       bool
-		expectFailureSubstr  string
+		name                string
+		statusCode          int
+		roundTripErr        error
+		expectVerified      bool
+		expectFailureSubstr string
 	}{
 		{
-			name:               "marks verified on HTTP 200",
-			statusCode:         http.StatusOK,
-			expectVerified:     true,
+			name:           "marks verified on HTTP 200",
+			statusCode:     http.StatusOK,
+			expectVerified: true,
 		},
 		{
-			name:               "marks unverified on non-200",
-			statusCode:         http.StatusUnauthorized,
-			expectVerified:     false,
+			name:                "marks unverified on non-200",
+			statusCode:          http.StatusUnauthorized,
+			expectVerified:      false,
 			expectFailureSubstr: "HTTP 401",
 		},
 		{
-			name:               "marks unverified on transport error",
-			roundTripErr:       errors.New("dial tcp timeout"),
-			expectVerified:     false,
+			name:                "marks unverified on transport error",
+			roundTripErr:        errors.New("dial tcp timeout"),
+			expectVerified:      false,
 			expectFailureSubstr: "dial tcp timeout",
 		},
 	}
@@ -108,7 +108,7 @@ func TestReconcileBmcCredential_Verification(t *testing.T) {
 			if resource.Status.LastCheckedAt.IsZero() {
 				t.Fatalf("expected LastCheckedAt to be set")
 			}
-			if resource.Status.LastCheckedAt.Before(before.Add(-1 * time.Second)) || resource.Status.LastCheckedAt.After(after.Add(1*time.Second)) {
+			if resource.Status.LastCheckedAt.Before(before.Add(-1*time.Second)) || resource.Status.LastCheckedAt.After(after.Add(1*time.Second)) {
 				t.Fatalf("LastCheckedAt out of expected range: %s", resource.Status.LastCheckedAt)
 			}
 
