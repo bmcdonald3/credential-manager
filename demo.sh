@@ -4,7 +4,7 @@
 export PORT=8090
 
 echo "🚀 Starting Credential Manager Service on port $PORT in the background..."
-go run ./cmd/server serve --database-url="file:data.db?cache=shared&_fk=1" &
+go run ./cmd/server serve --port=$PORT --database-url="file:data.db?cache=shared&_fk=1" &
 SERVER_PID=$!
 
 # Give the server a few seconds to boot up
