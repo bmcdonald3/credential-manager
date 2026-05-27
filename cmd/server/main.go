@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -246,7 +247,10 @@ func runServer(cmd *cobra.Command, args []string) error {
 	// Initialize reconciliation controller
 	// Note: This requires reconciliation code to be generated via 'fabrica generate'
 	// and reconcilers to be implemented in pkg/reconcilers/
-	secretStore := secrets.NewLocalSecretStore()
+	secretStore, err := initSecretStore()
+	if err != nil {
+		return err
+	}
 
 	if config.ReconcileEnabled {
 		ctx := context.Background()
@@ -338,6 +342,21 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	log.Println("Server exited")
 	return nil
+}
+
+func initSecretStore() (secrets.SecretStore, error) {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("SECRET_STORE_BACKEND")), "infisical") {
+		secretStore, err := secrets.NewInfisicalSecretStore()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize Infisical secret store: %w", err)
+		}
+
+		log.Printf("Using secret store backend: infisical")
+		return secretStore, nil
+	}
+
+	log.Printf("Using secret store backend: local")
+	return secrets.NewLocalSecretStore(), nil
 }
 
 // Health check handler
