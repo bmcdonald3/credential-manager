@@ -13,7 +13,9 @@ type LocalSecretStore struct {
 
 func NewLocalSecretStore() *LocalSecretStore {
 	return &LocalSecretStore{
-		data: make(map[string]string),
+		data: map[string]string{
+			"node-123": "old-pass", // Add your actual current BMC password here
+		},
 	}
 }
 
