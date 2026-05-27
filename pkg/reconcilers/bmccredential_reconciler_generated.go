@@ -112,6 +112,11 @@ func (r *BmcCredentialReconciler) Reconcile(ctx context.Context, resource interf
 		// Set error condition
 		r.SetCondition(&res, "Ready", "False", "ReconcileError", err.Error())
 
+		// Persist failure status fields from custom reconciliation.
+		if statusErr := r.UpdateStatus(ctx, &res); statusErr != nil {
+			r.Logger.Errorf("Failed to update status for failed reconciliation %s: %v", res.GetUID(), statusErr)
+		}
+
 		// Requeue with backoff (30 seconds)
 		return reconcile.Result{Requeue: true, RequeueAfter: 30 * time.Second}, err
 	}
