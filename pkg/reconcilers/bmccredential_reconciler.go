@@ -81,10 +81,13 @@ func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, re
 		return err
 	}
 
-	newPassword, err := generateSecurePassword(24)
-	if err != nil {
-		res.Status.FailureReason = err.Error()
-		return err
+	newPassword := strings.TrimSpace(res.Spec.DesiredPassword)
+	if newPassword == "" {
+		newPassword, err = generateSecurePassword(24)
+		if err != nil {
+			res.Status.FailureReason = err.Error()
+			return err
+		}
 	}
 
 	patchURL := fmt.Sprintf(

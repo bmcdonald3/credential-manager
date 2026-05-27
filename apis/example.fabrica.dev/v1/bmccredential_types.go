@@ -21,10 +21,11 @@ type BmcCredential struct {
 
 // BmcCredentialSpec defines the desired state of BmcCredential
 type BmcCredentialSpec struct {
-	Address        string `json:"address" validate:"required"`
-	AuthUsername   string `json:"authUsername" validate:"required"`
-	TargetAccount  string `json:"targetAccount" validate:"required"`
-	NodeIdentifier string `json:"nodeIdentifier" validate:"required"`
+	Address         string `json:"address" validate:"required"`
+	AuthUsername    string `json:"authUsername" validate:"required"`
+	TargetAccount   string `json:"targetAccount" validate:"required"`
+	NodeIdentifier  string `json:"nodeIdentifier" validate:"required"`
+	DesiredPassword string `json:"desiredPassword,omitempty"`
 }
 
 // BmcCredentialStatus defines the observed state of BmcCredential
