@@ -22,6 +22,7 @@ type BmcCredential struct {
 // BmcCredentialSpec defines the desired state of BmcCredential
 type BmcCredentialSpec struct {
 	Address        string `json:"address" validate:"required"`
+	AuthUsername   string `json:"authUsername" validate:"required"`
 	TargetAccount  string `json:"targetAccount" validate:"required"`
 	NodeIdentifier string `json:"nodeIdentifier" validate:"required"`
 }
@@ -37,6 +38,9 @@ type BmcCredentialStatus struct {
 func (r *BmcCredential) Validate(ctx context.Context) error {
 	if r.Spec.Address == "" {
 		return fmt.Errorf("spec.address is required")
+	}
+	if r.Spec.AuthUsername == "" {
+		return fmt.Errorf("spec.authUsername is required")
 	}
 	if r.Spec.TargetAccount == "" {
 		return fmt.Errorf("spec.targetAccount is required")

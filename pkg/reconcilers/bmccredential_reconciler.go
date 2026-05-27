@@ -62,8 +62,8 @@ func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, re
 	res.Status.RotationSucceeded = false
 	res.Status.FailureReason = ""
 
-	if strings.TrimSpace(res.Spec.Address) == "" || strings.TrimSpace(res.Spec.TargetAccount) == "" || strings.TrimSpace(res.Spec.NodeIdentifier) == "" {
-		err := fmt.Errorf("address, targetAccount, and nodeIdentifier are required")
+	if strings.TrimSpace(res.Spec.Address) == "" || strings.TrimSpace(res.Spec.AuthUsername) == "" || strings.TrimSpace(res.Spec.TargetAccount) == "" || strings.TrimSpace(res.Spec.NodeIdentifier) == "" {
+		err := fmt.Errorf("address, authUsername, targetAccount, and nodeIdentifier are required")
 		res.Status.FailureReason = err.Error()
 		return err
 	}
@@ -105,7 +105,7 @@ func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, re
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(strings.TrimSpace(res.Spec.TargetAccount), currentPassword)
+	req.SetBasicAuth(strings.TrimSpace(res.Spec.AuthUsername), currentPassword)
 
 	httpClient := &http.Client{
 		Timeout: 15 * time.Second,

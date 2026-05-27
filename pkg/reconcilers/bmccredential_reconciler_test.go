@@ -23,6 +23,7 @@ func TestReconcileBmcCredential(t *testing.T) {
 		name              string
 		serverHandler     func(t *testing.T, w http.ResponseWriter, r *http.Request)
 		contextTimeout    time.Duration
+		authUsername      string
 		wantErr           bool
 		errContains       string
 		wantSuccessStatus bool
@@ -45,6 +46,7 @@ func TestReconcileBmcCredential(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusNoContent)
 			},
+			authUsername:      username,
 			wantErr:           false,
 			wantSuccessStatus: true,
 		},
@@ -54,6 +56,7 @@ func TestReconcileBmcCredential(t *testing.T) {
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = w.Write([]byte("invalid credentials"))
 			},
+			authUsername:      username,
 			wantErr:           true,
 			errContains:       "401 Unauthorized",
 			wantSuccessStatus: false,
@@ -64,9 +67,17 @@ func TestReconcileBmcCredential(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 				w.WriteHeader(http.StatusNoContent)
 			},
+			authUsername:      username,
 			contextTimeout:    10 * time.Millisecond,
 			wantErr:           true,
 			errContains:       "timeout",
+			wantSuccessStatus: false,
+		},
+		{
+			name:              "missing auth username fails validation",
+			authUsername:      "   ",
+			wantErr:           true,
+			errContains:       "authUsername",
 			wantSuccessStatus: false,
 		},
 	}
@@ -74,8 +85,10 @@ func TestReconcileBmcCredential(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			store := secrets.NewLocalSecretStore()
-			if err := store.Write(nodeID, oldPassword); err != nil {
-				t.Fatalf("failed to seed secret store: %v", err)
+			if err := store.Update(nodeID, oldPassword); err != nil {
+				if err := store.Write(nodeID, oldPassword); err != nil {
+					t.Fatalf("failed to seed secret store: %v", err)
+				}
 			}
 
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +100,7 @@ func TestReconcileBmcCredential(t *testing.T) {
 			resource := &v1.BmcCredential{
 				Spec: v1.BmcCredentialSpec{
 					Address:        strings.TrimPrefix(server.URL, "https://"),
+					AuthUsername:   tc.authUsername,
 					TargetAccount:  username,
 					NodeIdentifier: nodeID,
 				},
