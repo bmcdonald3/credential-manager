@@ -36,6 +36,8 @@ type BmcCredentialReconciler struct {
 	reconcile.BaseReconciler
 
 	// Custom fields are defined in bmccredential_reconciler.go
+	SecretStore SecretResolver
+	HTTPClient  HTTPDoer
 }
 
 // NewDefaultBmcCredentialReconciler creates a default BmcCredential reconciler.

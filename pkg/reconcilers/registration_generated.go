@@ -30,9 +30,15 @@ import (
 //	    log.Fatal(err)
 //	}
 //	controller.Start(ctx)
-func RegisterReconcilers(controller *reconcile.Controller, client reconcile.ClientInterface, eventBus events.EventBus) error {
+func RegisterReconcilers(
+	controller *reconcile.Controller,
+	client reconcile.ClientInterface,
+	eventBus events.EventBus,
+	secretStore SecretResolver,
+	httpClient HTTPDoer,
+) error {
 	// Register BmcCredential reconciler
-	bmccredentialsReconciler := NewDefaultBmcCredentialReconciler(client, eventBus)
+	bmccredentialsReconciler := NewBmcCredentialReconciler(client, eventBus, secretStore, httpClient)
 	if err := controller.RegisterReconciler(bmccredentialsReconciler); err != nil {
 		return err
 	}
