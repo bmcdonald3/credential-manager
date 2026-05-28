@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -15,12 +16,14 @@ func main() {
 		log.Fatalf("Failed to init store: %v", err)
 	}
 
-	err = store.Store("curr-pass-001", map[string]interface{}{"value": "initial0"})
+	ctx := context.Background()
+
+	err = store.StoreSecret(ctx, "curr-pass-001", "initial0")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = store.Store("new-pass-001", map[string]interface{}{"value": "new-pass"})
+	err = store.StoreSecret(ctx, "new-pass-001", "new-pass")
 	if err != nil {
 		log.Fatal(err)
 	}
