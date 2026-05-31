@@ -121,6 +121,10 @@ func rotateRedfishPassword(ctx context.Context, spec v1.BmcCredentialSpec) (bool
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(spec.CurrentUsername, spec.CurrentPassword)
 
+	fmt.Printf("\n[DEBUG] Executing Redfish payload via equivalent curl:\n"+
+		"curl -k -u \"%s:%s\" -X PATCH %s -H \"Content-Type: application/json\" -d '%s'\n\n",
+		spec.CurrentUsername, spec.CurrentPassword, endpoint, string(body))
+
 	resp, err := buildRedfishHTTPClient().Do(req)
 	if err != nil {
 		return false, fmt.Sprintf("request to BMC failed: %v", err), err
