@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
 	"github.com/openchami/fabrica/pkg/events"
 	"github.com/openchami/fabrica/pkg/reconcile"
 )

@@ -28,4 +28,4 @@ type BmcCredentialStatus struct {
 
 ## 4. Verification Command
 
-`curl -X POST -H "Content-Type: application/json" -d '{"apiVersion":"credentials.openchami.org/v1","kind":"BmcCredential","metadata":{"name":"test-bmc-cred"},"spec":{"targetAddress":"192.168.1.100","targetAccount":"root","currentUsername":"root","currentPassword":"oldpassword","newPassword":"newpassword","rotationTrigger":"initial-creation"}}' http://localhost:8080/apis/credentials.openchami.org/v1/bmccredentials`
+`curl -X POST -H "Content-Type: application/json" -d '{"apiVersion":"credentials.openchami.org/v1","kind":"BmcCredential","metadata":{"name":"test-bmc-cred"},"spec":{"targetAddress":"192.168.1.100","targetAccount":"root","currentUsername":"root","currentPassword":"oldpassword","newPassword":"newpassword","rotationTrigger":"initial-creation"}}' http://localhost:8080/bmccredentials`
