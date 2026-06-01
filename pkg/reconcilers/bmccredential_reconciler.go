@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,68 +18,18 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/user/test/apis/example.fabrica.dev/v1"
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
 )
 
-const bmcRequestTimeout = 10 * time.Second
+var buildRedfishHTTPClient = func() *http.Client {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // Required for Phase 1
+	}
 
-// bmcHTTPClientFactory allows tests to inject a deterministic HTTP client.
-var bmcHTTPClientFactory = func() *http.Client {
 	return &http.Client{
-		Timeout: bmcRequestTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: transport,
+		Timeout:   15 * time.Second,
 	}
-}
-
-type redfishPasswordPatch struct {
-	Password string `json:"Password"`
-}
-
-func rotateBmcPassword(ctx context.Context, client *http.Client, spec v1.BmcCredentialSpec) error {
-	targetAddress := strings.TrimSpace(spec.TargetAddress)
-	targetAccount := strings.TrimSpace(spec.TargetAccount)
-	if targetAddress == "" {
-		return fmt.Errorf("target address is required")
-	}
-	if targetAccount == "" {
-		return fmt.Errorf("target account is required")
-	}
-
-	endpoint := fmt.Sprintf("https://%s/redfish/v1/AccountService/Accounts/%s", targetAddress, url.PathEscape(targetAccount))
-	payload, err := json.Marshal(redfishPasswordPatch{Password: spec.NewPassword})
-	if err != nil {
-		return fmt.Errorf("failed to marshal redfish password payload: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, endpoint, strings.NewReader(string(payload)))
-	if err != nil {
-		return fmt.Errorf("failed to create redfish PATCH request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(spec.CurrentUsername, spec.CurrentPassword)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("redfish PATCH request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if readErr != nil {
-		return fmt.Errorf("redfish PATCH failed with status %d and unreadable body: %w", resp.StatusCode, readErr)
-	}
-
-	if len(strings.TrimSpace(string(body))) == 0 {
-		return fmt.Errorf("redfish PATCH failed with status %d", resp.StatusCode)
-	}
-
-	return fmt.Errorf("redfish PATCH failed with status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 }
 
 // reconcileBmcCredential contains custom reconciliation logic.
@@ -114,19 +65,86 @@ func rotateBmcPassword(ctx context.Context, client *http.Client, spec v1.BmcCred
 // Returns:
 //   - error: If reconciliation failed (will trigger retry with backoff)
 func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, res *v1.BmcCredential) error {
-	attemptTime := time.Now().UTC()
-	res.Status.LastRotationAttempt = &attemptTime
-
-	if err := rotateBmcPassword(ctx, bmcHTTPClientFactory(), res.Spec); err != nil {
-		res.Status.RotationSucceeded = false
-		res.Status.FailureReason = err.Error()
-		r.Logger.Warnf("BmcCredential rotation failed for %s: %v", res.GetUID(), err)
+	if !shouldRotate(res) {
+		r.Logger.Debugf("Skipping rotation for %s because trigger is unchanged", res.GetUID())
 		return nil
 	}
 
-	res.Status.RotationSucceeded = true
-	res.Status.FailureReason = ""
-	r.Logger.Infof("BmcCredential rotation succeeded for %s", res.GetUID())
+	attempt := time.Now().UTC()
+	res.Status.LastRotationAttempt = &attempt
 
-	return nil
+	succeeded, failureReason, err := rotateRedfishPassword(ctx, res.Spec)
+	res.Status.RotationSucceeded = succeeded
+	res.Status.FailureReason = failureReason
+
+	if succeeded {
+		res.Status.ObservedTriggerValue = res.Spec.RotationTrigger
+		r.Logger.Infof("Password rotation succeeded for BmcCredential %s", res.GetUID())
+		return nil
+	}
+
+	if updateErr := r.UpdateStatus(ctx, res); updateErr != nil {
+		return fmt.Errorf("rotation failed (%v) and status update failed: %w", err, updateErr)
+	}
+
+	if err == nil {
+		err = errors.New(failureReason)
+	}
+
+	r.Logger.Errorf("Password rotation failed for BmcCredential %s: %v", res.GetUID(), err)
+
+	return err
+}
+
+func shouldRotate(res *v1.BmcCredential) bool {
+	if res.Status.LastRotationAttempt == nil {
+		return true
+	}
+
+	return res.Status.ObservedTriggerValue != res.Spec.RotationTrigger
+}
+
+func rotateRedfishPassword(ctx context.Context, spec v1.BmcCredentialSpec) (bool, string, error) {
+	endpoint := fmt.Sprintf("https://%s/redfish/v1/AccountService/Accounts/%s", spec.TargetAddress, url.PathEscape(spec.TargetAccount))
+
+	payload := map[string]string{"Password": spec.NewPassword}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return false, fmt.Sprintf("failed to encode request body: %v", err), err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, endpoint, strings.NewReader(string(body)))
+	if err != nil {
+		return false, fmt.Sprintf("failed to build request: %v", err), err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(spec.CurrentUsername, spec.CurrentPassword)
+
+	fmt.Printf("\n[DEBUG] Executing Redfish payload via equivalent curl:\n"+
+		"curl -k -u \"%s:%s\" -X PATCH %s -H \"Content-Type: application/json\" -d '%s'\n\n",
+		spec.CurrentUsername, spec.CurrentPassword, endpoint, string(body))
+
+	resp, err := buildRedfishHTTPClient().Do(req)
+	if err != nil {
+		return false, fmt.Sprintf("request to BMC failed: %v", err), err
+	}
+	defer resp.Body.Close()
+
+	responseBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if readErr != nil {
+		return false, fmt.Sprintf("failed to read response body: %v", readErr), readErr
+	}
+
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent {
+		return true, "", nil
+	}
+
+	trimmed := strings.TrimSpace(string(responseBody))
+	if trimmed == "" {
+		trimmed = "no response body"
+	}
+
+	failureReason := fmt.Sprintf("received HTTP %d from BMC: %s", resp.StatusCode, trimmed)
+	return false, failureReason, errors.New(failureReason)
 }

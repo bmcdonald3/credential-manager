@@ -1,41 +1,31 @@
-# HANDOFF
+## 1. Reconciliation Logic Summary
 
-## Business Logic Implemented
-- Added custom reconciliation logic for `BmcCredential` that performs a Redfish password rotation request on create/update reconcile events.
-- Reconciler sends an HTTP `PATCH` request to:
-  - `https://[targetAddress]/redfish/v1/AccountService/Accounts/[targetAccount]`
-- Request uses basic auth with `currentUsername` / `currentPassword` and JSON payload:
-  - `{"Password":"<newPassword>"}`
-- HTTP client is configured with TLS certificate verification disabled (`InsecureSkipVerify: true`) and a request timeout.
-- Status behavior:
-  - Always sets `lastRotationAttempt` to current UTC time on each attempt.
-  - On HTTP `200` or `204`, sets `rotationSucceeded=true` and clears `failureReason`.
-  - On request failure, timeout, unauthorized, or any non-2xx response, sets `rotationSucceeded=false` and stores the exact error text in `failureReason`.
+The service listens for changes to `BmcCredential` resources. When a resource is created or its `RotationTrigger` is updated, the reconciler constructs a Redfish PATCH request to `https://[TargetAddress]/redfish/v1/AccountService/Accounts/[TargetAccount]`. It uses the `CurrentUsername` and `CurrentPassword` for Basic Authentication and sends the `NewPassword` in the JSON payload. The HTTP response determines the success or failure recorded in the resource's Status.
 
-## Exact Schema Fields
+## 2. Go Struct Definitions
 
-### Spec (`BmcCredentialSpec`)
-- `targetAddress` (string, required)
-- `currentUsername` (string, required)
-- `currentPassword` (string, required)
-- `targetAccount` (string, required)
-- `newPassword` (string, required)
+```go
+type BmcCredentialSpec struct {
+    TargetAddress   string `json:"targetAddress" validate:"required"`
+    TargetAccount   string `json:"targetAccount" validate:"required"`
+    CurrentUsername string `json:"currentUsername" validate:"required"`
+    CurrentPassword string `json:"currentPassword" validate:"required"`
+    NewPassword     string `json:"newPassword" validate:"required"`
+    RotationTrigger string `json:"rotationTrigger,omitempty"`
+}
 
-### Status (`BmcCredentialStatus`)
-- `rotationSucceeded` (boolean)
-- `lastRotationAttempt` (timestamp, UTC, nullable)
-- `failureReason` (string)
+type BmcCredentialStatus struct {
+    LastRotationAttempt *time.Time `json:"lastRotationAttempt,omitempty"`
+    RotationSucceeded   bool       `json:"rotationSucceeded"`
+    FailureReason       string     `json:"failureReason,omitempty"`
+}
 
-## Verified Server Startup Command
-```bash
-go run ./cmd/server serve --database-url="file:data.db?cache=shared&_fk=1"
 ```
 
-## Verified Successful Curl Command
-```bash
-curl -sS -o /tmp/bmc_create_resp.json -w "%{http_code}" \
-  -X POST http://127.0.0.1:8080/bmccredentials/ \
-  -H "Content-Type: application/json" \
-  -d '{"metadata":{"name":"rotate-admin"},"spec":{"targetAddress":"192.0.2.10","currentUsername":"admin","currentPassword":"old-pass","targetAccount":"2","newPassword":"new-pass"}}'
-```
-- Verified response status: `201`
+## 3. Server Startup Command
+
+`go run ./cmd/server serve --database-url="file:data.db?cache=shared&_fk=1"`
+
+## 4. Verification Command
+
+`curl -X POST -H "Content-Type: application/json" -d '{"apiVersion":"credentials.openchami.org/v1","kind":"BmcCredential","metadata":{"name":"test-bmc-cred"},"spec":{"targetAddress":"192.168.1.100","targetAccount":"root","currentUsername":"root","currentPassword":"oldpassword","newPassword":"newpassword","rotationTrigger":"initial-creation"}}' http://localhost:8080/bmccredentials`

@@ -23,27 +23,23 @@ type BmcCredential struct {
 // BmcCredentialSpec defines the desired state of BmcCredential
 type BmcCredentialSpec struct {
 	TargetAddress   string `json:"targetAddress" validate:"required"`
+	TargetAccount   string `json:"targetAccount" validate:"required"`
 	CurrentUsername string `json:"currentUsername" validate:"required"`
 	CurrentPassword string `json:"currentPassword" validate:"required"`
-	TargetAccount   string `json:"targetAccount" validate:"required"`
 	NewPassword     string `json:"newPassword" validate:"required"`
+	RotationTrigger string `json:"rotationTrigger,omitempty"`
 }
 
 // BmcCredentialStatus defines the observed state of BmcCredential
 type BmcCredentialStatus struct {
-	RotationSucceeded   bool       `json:"rotationSucceeded"`
-	LastRotationAttempt *time.Time `json:"lastRotationAttempt,omitempty"`
-	FailureReason       string     `json:"failureReason,omitempty"`
+	LastRotationAttempt  *time.Time `json:"lastRotationAttempt,omitempty"`
+	RotationSucceeded    bool       `json:"rotationSucceeded"`
+	FailureReason        string     `json:"failureReason,omitempty"`
+	ObservedTriggerValue string     `json:"observedTriggerValue,omitempty"`
 }
 
 // Validate implements custom validation logic for BmcCredential
 func (r *BmcCredential) Validate(ctx context.Context) error {
-	// Add custom validation logic here
-	// Example:
-	// if r.Spec.Description == "forbidden" {
-	//     return errors.New("description 'forbidden' is not allowed")
-	// }
-
 	return nil
 }
 

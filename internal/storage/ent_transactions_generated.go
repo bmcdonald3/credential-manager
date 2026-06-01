@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/user/test/internal/storage/ent"
+	"github.com/openchami/credential-manager/internal/storage/ent"
 )
 
 // WithTx executes fn within a database transaction.

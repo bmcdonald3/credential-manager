@@ -5,10 +5,10 @@ package ent
 import (
 	"time"
 
-	"github.com/user/test/internal/storage/ent/annotation"
-	"github.com/user/test/internal/storage/ent/label"
-	"github.com/user/test/internal/storage/ent/resource"
-	"github.com/user/test/internal/storage/ent/schema"
+	"github.com/openchami/credential-manager/internal/storage/ent/annotation"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/schema"
 )
 
 // The init function reads all schema descriptors with runtime code

@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	v1 "github.com/user/test/apis/example.fabrica.dev/v1"
-	"github.com/user/test/internal/storage"
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
+	"github.com/openchami/credential-manager/internal/storage"
 )
 
 func newImportCommand() *cobra.Command {
@@ -40,13 +40,13 @@ Import modes:
 
 Examples:
   # Import from backup directory
-  test import --input ./backup
+  credential_manager import --input ./backup
 
   # Dry run to preview changes
-  test import --input ./backup --dry-run
+  credential_manager import --input ./backup --dry-run
 
   # Replace all resources
-  test import --input ./backup --mode replace
+  credential_manager import --input ./backup --mode replace
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runImport(cmd.Context(), input, mode, dryRun, skipExisting)

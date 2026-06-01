@@ -5,12 +5,12 @@ package enttest
 import (
 	"context"
 
-	"github.com/user/test/internal/storage/ent"
+	"github.com/openchami/credential-manager/internal/storage/ent"
 	// required by schema hooks.
-	_ "github.com/user/test/internal/storage/ent/runtime"
+	_ "github.com/openchami/credential-manager/internal/storage/ent/runtime"
 
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/user/test/internal/storage/ent/migrate"
+	"github.com/openchami/credential-manager/internal/storage/ent/migrate"
 )
 
 type (

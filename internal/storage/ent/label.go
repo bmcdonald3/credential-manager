@@ -8,8 +8,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/user/test/internal/storage/ent/label"
-	"github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
 )
 
 // Label is the model entity for the Label schema.

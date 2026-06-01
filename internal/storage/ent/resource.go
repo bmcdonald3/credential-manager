@@ -10,7 +10,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
 )
 
 // Resource is the model entity for the Resource schema.

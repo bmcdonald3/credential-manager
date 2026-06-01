@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/user/test/internal/storage"
+	"github.com/openchami/credential-manager/internal/storage"
 )
 
 func newExportCommand() *cobra.Command {
@@ -35,10 +35,10 @@ This is useful for:
 
 Examples:
   # Export all resources to YAML
-  test export --format yaml --output ./backup
+  credential_manager export --format yaml --output ./backup
 
   # Export specific resource types
-  test export --kinds BmcCredential --output ./bmccredential-backup
+  credential_manager export --kinds BmcCredential --output ./bmccredential-backup
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runExport(cmd.Context(), format, output, kinds, perType)

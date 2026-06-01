@@ -1,5 +1,5 @@
 groups:
-    - name: example.fabrica.dev
+    - name: credentials.openchami.org
       storageVersion: v1
       versions:
         - v1

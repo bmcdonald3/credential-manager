@@ -12,10 +12,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/user/test/internal/storage/ent/annotation"
-	"github.com/user/test/internal/storage/ent/label"
-	"github.com/user/test/internal/storage/ent/predicate"
-	"github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/annotation"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	"github.com/openchami/credential-manager/internal/storage/ent/predicate"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
 )
 
 // ResourceQuery is the builder for querying Resource entities.

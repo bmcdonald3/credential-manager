@@ -1,7 +1,7 @@
 project:
-    name: test
-    module: github.com/user/test
-    created: 2026-05-01T11:04:10.738871-07:00
+    name: credential-manager
+    module: github.com/openchami/credential-manager
+    created: 2026-05-31T13:43:47.713635-07:00
 features:
     validation:
         enabled: true

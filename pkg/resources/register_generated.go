@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openchami/fabrica/pkg/codegen"
-	v1 "github.com/user/test/apis/example.fabrica.dev/v1"
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
 )
 
 // RegisterAllResources registers all discovered resources with the generator.

@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/user/test/internal/storage/ent"
+	"github.com/openchami/credential-manager/internal/storage/ent"
 )
 
 // The AnnotationFunc type is an adapter to allow the use of ordinary

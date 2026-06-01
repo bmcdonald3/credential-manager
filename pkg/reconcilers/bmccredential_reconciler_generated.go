@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
 	"github.com/openchami/fabrica/pkg/events"
 	"github.com/openchami/fabrica/pkg/reconcile"
-	"github.com/user/test/apis/example.fabrica.dev/v1"
 )
 
 // BmcCredentialReconciler reconciles BmcCredential resources.
@@ -135,6 +135,6 @@ func (r *BmcCredentialReconciler) Reconcile(ctx context.Context, resource interf
 		}
 	*/
 
-	// Requeue after 5 minutes for periodic reconciliation
-	return reconcile.Result{RequeueAfter: 5 * time.Minute}, nil
+	// Event-driven reconciliation is sufficient for this resource.
+	return reconcile.Result{}, nil
 }

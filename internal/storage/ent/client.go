@@ -9,15 +9,15 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/user/test/internal/storage/ent/migrate"
+	"github.com/openchami/credential-manager/internal/storage/ent/migrate"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/user/test/internal/storage/ent/annotation"
-	"github.com/user/test/internal/storage/ent/label"
-	"github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/annotation"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
 )
 
 // Client is the client that holds all ent builders.

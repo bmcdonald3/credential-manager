@@ -9,8 +9,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/user/test/internal/storage/ent/label"
-	"github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	"github.com/openchami/credential-manager/internal/storage/ent/resource"
 )
 
 // LabelCreate is the builder for creating a Label entity.

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/user/test/internal/storage/ent"
-	"github.com/user/test/internal/storage/ent/label"
-	entresource "github.com/user/test/internal/storage/ent/resource"
+	"github.com/openchami/credential-manager/internal/storage/ent"
+	"github.com/openchami/credential-manager/internal/storage/ent/label"
+	entresource "github.com/openchami/credential-manager/internal/storage/ent/resource"
 
-	v1 "github.com/user/test/apis/example.fabrica.dev/v1"
+	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
 )
 
 // ensureEntClient verifies the ent client has been initialized
