@@ -32,3 +32,5 @@ data/
 *~
 
 bmc-server
+server.log
+secrets.json
