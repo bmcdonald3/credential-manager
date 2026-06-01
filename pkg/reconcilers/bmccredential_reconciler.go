@@ -15,11 +15,49 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	v1 "github.com/openchami/credential-manager/apis/credentials.openchami.org/v1"
+	"github.com/openchami/credential-manager/pkg/secrets"
 )
+
+const (
+	masterKeyEnvVar = "MASTER_KEY"
+	secretStoreFile = "secrets.json"
+)
+
+type resolvedCredentials struct {
+	CurrentUsername string
+	CurrentPassword string
+	NewPassword     string
+}
+
+type secretPayload struct {
+	CurrentUsername string `json:"currentUsername"`
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+}
+
+type terminalError struct {
+	reason string
+}
+
+func (e *terminalError) Error() string {
+	return e.reason
+}
+
+func newTerminalError(format string, args ...interface{}) error {
+	return &terminalError{reason: fmt.Sprintf(format, args...)}
+}
+
+func isTerminalError(err error) bool {
+	var target *terminalError
+	return errors.As(err, &target)
+}
 
 var buildRedfishHTTPClient = func() *http.Client {
 	transport := &http.Transport{
@@ -30,6 +68,10 @@ var buildRedfishHTTPClient = func() *http.Client {
 		Transport: transport,
 		Timeout:   15 * time.Second,
 	}
+}
+
+var newSecretStore = func(masterKeyHex, filename string, create bool) (secrets.SecretStore, error) {
+	return secrets.NewLocalSecretStore(masterKeyHex, filename, create)
 }
 
 // reconcileBmcCredential contains custom reconciliation logic.
@@ -75,7 +117,11 @@ func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, re
 
 	succeeded, failureReason, err := rotateRedfishPassword(ctx, res.Spec)
 	res.Status.RotationSucceeded = succeeded
-	res.Status.FailureReason = failureReason
+	if succeeded {
+		res.Status.FailureReason = ""
+	} else {
+		res.Status.FailureReason = appendFailureReason(res.Status.FailureReason, failureReason)
+	}
 
 	if succeeded {
 		res.Status.ObservedTriggerValue = res.Spec.RotationTrigger
@@ -83,15 +129,17 @@ func (r *BmcCredentialReconciler) reconcileBmcCredential(ctx context.Context, re
 		return nil
 	}
 
-	if updateErr := r.UpdateStatus(ctx, res); updateErr != nil {
-		return fmt.Errorf("rotation failed (%v) and status update failed: %w", err, updateErr)
-	}
-
 	if err == nil {
 		err = errors.New(failureReason)
 	}
 
-	r.Logger.Errorf("Password rotation failed for BmcCredential %s: %v", res.GetUID(), err)
+	if isTerminalError(err) {
+		res.Status.ObservedTriggerValue = res.Spec.RotationTrigger
+		r.Logger.Errorf("Terminal password rotation failure for BmcCredential %s: %v", res.GetUID(), err)
+		return nil
+	}
+
+	r.Logger.Errorf("Transient password rotation failure for BmcCredential %s: %v", res.GetUID(), err)
 
 	return err
 }
@@ -105,9 +153,39 @@ func shouldRotate(res *v1.BmcCredential) bool {
 }
 
 func rotateRedfishPassword(ctx context.Context, spec v1.BmcCredentialSpec) (bool, string, error) {
+	if strings.TrimSpace(spec.TargetAddress) == "" {
+		return false, "missing required spec.targetAddress", newTerminalError("missing required spec.targetAddress")
+	}
+	if strings.TrimSpace(spec.TargetAccount) == "" {
+		return false, "missing required spec.targetAccount", newTerminalError("missing required spec.targetAccount")
+	}
+	if strings.TrimSpace(spec.SecretID) == "" {
+		return false, "missing required spec.secretId", newTerminalError("missing required spec.secretId")
+	}
+
+	masterKey := strings.TrimSpace(os.Getenv(masterKeyEnvVar))
+	if masterKey == "" {
+		return false, "MASTER_KEY environment variable is required", newTerminalError("MASTER_KEY environment variable is required")
+	}
+
+	store, err := newSecretStore(masterKey, secretStoreFile, false)
+	if err != nil {
+		return false, fmt.Sprintf("failed to open secret store: %v", err), newTerminalError("failed to open secret store: %v", err)
+	}
+
+	secretJSON, err := store.GetSecretByID(spec.SecretID)
+	if err != nil {
+		return false, fmt.Sprintf("failed to load secret %q: %v", spec.SecretID, err), newTerminalError("failed to load secret %q: %v", spec.SecretID, err)
+	}
+
+	credentials, err := decodeSecretPayload(secretJSON)
+	if err != nil {
+		return false, err.Error(), newTerminalError("%s", err.Error())
+	}
+
 	endpoint := fmt.Sprintf("https://%s/redfish/v1/AccountService/Accounts/%s", spec.TargetAddress, url.PathEscape(spec.TargetAccount))
 
-	payload := map[string]string{"Password": spec.NewPassword}
+	payload := map[string]string{"Password": credentials.NewPassword}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return false, fmt.Sprintf("failed to encode request body: %v", err), err
@@ -119,11 +197,7 @@ func rotateRedfishPassword(ctx context.Context, spec v1.BmcCredentialSpec) (bool
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(spec.CurrentUsername, spec.CurrentPassword)
-
-	fmt.Printf("\n[DEBUG] Executing Redfish payload via equivalent curl:\n"+
-		"curl -k -u \"%s:%s\" -X PATCH %s -H \"Content-Type: application/json\" -d '%s'\n\n",
-		spec.CurrentUsername, spec.CurrentPassword, endpoint, string(body))
+	req.SetBasicAuth(credentials.CurrentUsername, credentials.CurrentPassword)
 
 	resp, err := buildRedfishHTTPClient().Do(req)
 	if err != nil {
@@ -146,5 +220,52 @@ func rotateRedfishPassword(ctx context.Context, spec v1.BmcCredentialSpec) (bool
 	}
 
 	failureReason := fmt.Sprintf("received HTTP %d from BMC: %s", resp.StatusCode, trimmed)
-	return false, failureReason, errors.New(failureReason)
+	if resp.StatusCode >= http.StatusInternalServerError {
+		return false, failureReason, errors.New(failureReason)
+	}
+
+	return false, failureReason, newTerminalError("%s", failureReason)
+}
+
+func decodeSecretPayload(secretJSON string) (resolvedCredentials, error) {
+	var payload secretPayload
+	if err := json.Unmarshal([]byte(secretJSON), &payload); err != nil {
+		return resolvedCredentials{}, fmt.Errorf("invalid secret payload JSON: %w", err)
+	}
+
+	credentials := resolvedCredentials{
+		CurrentUsername: strings.TrimSpace(firstNonEmpty(payload.CurrentUsername, payload.Username)),
+		CurrentPassword: strings.TrimSpace(firstNonEmpty(payload.CurrentPassword, payload.Password)),
+		NewPassword:     strings.TrimSpace(payload.NewPassword),
+	}
+
+	if credentials.CurrentUsername == "" || credentials.CurrentPassword == "" || credentials.NewPassword == "" {
+		return resolvedCredentials{}, errors.New("invalid secret payload JSON: expected currentUsername/currentPassword/newPassword fields")
+	}
+
+	return credentials, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+
+	return ""
+}
+
+func appendFailureReason(existing, next string) string {
+	next = strings.TrimSpace(next)
+	if next == "" {
+		return strings.TrimSpace(existing)
+	}
+
+	existing = strings.TrimSpace(existing)
+	if existing == "" {
+		return next
+	}
+
+	return existing + "; " + next
 }

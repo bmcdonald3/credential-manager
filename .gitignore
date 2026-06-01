@@ -30,3 +30,7 @@ data/
 *.swp
 *.swo
 *~
+
+bmc-server
+server.log
+secrets.json
