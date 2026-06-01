@@ -24,9 +24,7 @@ type BmcCredential struct {
 type BmcCredentialSpec struct {
 	TargetAddress   string `json:"targetAddress" validate:"required"`
 	TargetAccount   string `json:"targetAccount" validate:"required"`
-	CurrentUsername string `json:"currentUsername" validate:"required"`
-	CurrentPassword string `json:"currentPassword" validate:"required"`
-	NewPassword     string `json:"newPassword" validate:"required"`
+	SecretID        string `json:"secretId" validate:"required"`
 	RotationTrigger string `json:"rotationTrigger,omitempty"`
 }
 
